@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="FourInARow" default="coverage" basedir=".">
+    <description>
+        Build file for a JavaFX application that will be used in the
+        second laboratory for the module.
+        This includes testing and the use of code coverage with Cobertura.
+    </description>
+    
+    <!-- set global properties for this build -->
+    <property name="src" location="src" />
+    <property name="build" location="build" />
+    <property name="dist" location="dist" />
+    <property name="libs" location="libs" />
+	<property name="docs" location="docs" />
+    
+    <!-- Instrumented classes are deposited into this directory -->
+    <property name="instrumented.dir" location="instrumented" />
+    
+    <!-- All reports go into this directory -->
+    <property name="reports.dir" location="reports" />
+    
+    <!-- Unit test reports from JUnit are deposited into this directory -->
+    <property name="reports.xml.dir" location="${reports.dir}/junit-xml" />
+    <property name="reports.html.dir" location="${reports.dir}/junit-html" />
+    
+    <!-- Coverage reports are deposited into these directories -->
+    <property name="coverage.xml.dir" location="${reports.dir}/cobertura-xml" />
+    <property name="coverage.summaryxml.dir" location="${reports.dir}/cobertura-summary-xml" />
+    <property name="coverage.html.dir" location="${reports.dir}/cobertura-html" />
+    
+    <path id="cobertura.classpath">
+        <fileset dir="${libs}">
+            <include name="cobertura-2.1.1.jar" />
+            <include name="lib/**/*.jar" />
+        </fileset>
+    </path>
+    
+    <taskdef classpathref="cobertura.classpath" resource="tasks.properties" />
+    
+    <path id="project.class.path">
+        <pathelement path="${java.class.path}/"/>
+        <pathelement path="${build}" />
+        <pathelement path="${libs}/junit-4.12.jar" />
+        <pathelement path="${libs}/hamcrest-core-1.3.jar" />
+        <pathelement path="${libs}/cobertura-2.1.1.jar" />
+        <pathelement path="${libs}/testfx-core-4.0.13-alpha.jar" />
+        <pathelement path="${libs}/testfx-junit-4.0.13-alpha.jar" />
+    </path>
+    
+    <target name="init">
+        <!-- Create the time stamp -->
+        <tstamp/>
+        <!-- Create the build directory structure used by compile -->
+        <mkdir dir="${build}"/>
+        <mkdir dir="${reports.dir}" />
+        <mkdir dir="${dist}" />
+        <mkdir dir="${dist}/lib" />
+        <mkdir dir="${reports.dir}" />
+        <mkdir dir="${instrumented.dir}" />
+        <mkdir dir="${reports.xml.dir}" />
+        <mkdir dir="${reports.html.dir}" />
+        <mkdir dir="${coverage.xml.dir}" />
+        <mkdir dir="${coverage.summaryxml.dir}" />
+        <mkdir dir="${coverage.html.dir}" />
+    </target>
+    
+    <target name="compile" depends="init"
+        description="compile the source">
+        <javac includeantruntime="false" srcdir="${src}" destdir="${build}" debug="yes">
+            <classpath refid="project.class.path" />
+        </javac>
+        <copy todir="${build}">
+            <fileset dir="${src}" excludes="**/*.java"/>
+        </copy>
+    </target>
+    
+    <target name="instrument" depends="compile">
+        <delete file="cobertura.ser" />
+        <delete dir="${instrumented.dir}" />
+        
+        <cobertura-instrument todir="${instrumented.dir}">
+            <fileset dir="${build}">
+                <include name="**/*.class" />
+                <exclude name="**/*Test.class" />
+            </fileset>
+        </cobertura-instrument>
+    </target>
+    
+    <target name="test" depends="compile">
+        <junit fork="yes" dir="${basedir}" printsummary="yes" haltonfailure="false"
+            failureProperty="test.failed">
+            
+            <classpath location="${instrumented.dir}" />
+            <classpath refid="project.class.path"/>
+            <classpath refid="cobertura.classpath" />
+            
+            <formatter type="xml"/>
+            
+            <test name="${testcase}"
+            todir="${reports.xml.dir}"
+            if="testcase" />
+            
+            <batchtest fork="yes" todir="${reports.xml.dir}" unless="testcase">
+                <fileset dir="${src}">
+                    <include name="**/*Test*.java"/>
+                </fileset>
+            </batchtest>
+        </junit>
+        
+        <junitreport todir="${reports.xml.dir}">
+            <fileset dir="${reports.xml.dir}">
+                <include name="TEST-*.xml" />
+            </fileset>
+            <report format="frames" todir="${reports.html.dir}" />
+        </junitreport>
+    </target>
+    
+    <target name="coverage-check">
+        <covertura-check branchrate="34" totallinerate="100" />
+    </target>
+    
+    <target name="coverage-report">
+        <!--
+         Generate an XML file containing the coverage data using
+         the "srcdir" attribute.
+         -->
+        <cobertura-report srcdir="${src}" destdir="${coverage.xml.dir}" format="xml" />
+    </target>
+    
+    <target name="summary-coverage-report" depends="test"
+        description="Generate the test coverage information">
+        <echo message="Starting to generate the coverage report" />
+        <cobertura-report format="summaryXml"
+        destdir="${coverage.summaryxml.dir}"
+        srcdir="${src}" />
+        <echo message="Finished generating the coverage report" />
+    </target>
+    
+    <target name="alternate-coverage-report">
+        <!--
+         Generate a series of HTML files containing the coverage
+         data in a user-readable form using nested source filesets.
+         -->
+        <cobertura-report destdir="${coverage.html.dir}">
+            <fileset dir="${src}">
+                <include name="**/*.java"/>
+            </fileset>
+        </cobertura-report>
+    </target>
+	
+	<target name="javadoc" depends="compile">
+		<javadoc packagenames="neustt.fourinarow.*"
+		         sourcepath="${src}"
+		         defaultexcludes="yes"
+		         destdir="${docs}"
+		         author="true"
+		         version="true"
+		         use="true"
+		         windowtitle="Four In A Row Code for Experiment 2">
+			<classpath refid="project.class.path" />
+		</javadoc>
+	</target>
+    
+    <target name="dist"
+        description="Generate the distribution"
+        depends="javadoc">
+        
+        <jar jarfile="${dist}/lib/FourInARow.jar"
+             basedir="${build}">
+            <manifest >
+                <attribute name="Main-Class"
+                           value="neustt.fourinarow.FourInARow"/>
+            </manifest>
+        </jar>
+    </target>
+    
+    <target name="coverage" 
+    	   depends="clean,compile,instrument,test,coverage-report,summary-coverage-report,alternate-coverage-report,javadoc,dist" description="Compile, instrument ourself, run the tests and generate JUnit and coverage reports.">
+    </target>
+    
+    <target name="clean" description="Clean up project">
+        <!-- Delete the ${build} and ${dist} directory trees -->
+        <delete dir="${build}" />
+        <delete dir="${dist}" />
+        <delete dir="${instrumented.dir}" />
+        <delete dir="${reports.dir}" />
+        <delete file="cobertura.log" />
+        <delete file="cobertura.ser" />
+    	<delete dir="${docs}" />
+    </target>
+</project>
+
